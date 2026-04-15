@@ -62,6 +62,11 @@ interface UseSigmaOptions {
   blastRadiusNodeIds?: Set<string>;
   animatedNodes?: Map<string, NodeAnimation>;
   visibleEdgeTypes?: EdgeType[];
+  /**
+   * When `hide`, nodes/edges outside the current focus (selection, query highlight,
+   * blast radius) are removed. When `fade` (default), they stay visible but dimmed.
+   */
+  graphUnrelatedDisplay?: 'fade' | 'hide';
 }
 
 interface UseSigmaReturn {
@@ -138,6 +143,8 @@ export const useSigma = (options: UseSigmaOptions = {}): UseSigmaReturn => {
   const blastRadiusRef = useRef<Set<string>>(new Set());
   const animatedNodesRef = useRef<Map<string, NodeAnimation>>(new Map());
   const visibleEdgeTypesRef = useRef<EdgeType[] | null>(null);
+  /** True when user chose to hide (not fade) unrelated graph elements. */
+  const hideUnrelatedRef = useRef(false);
   const layoutTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const [isLayoutRunning, setIsLayoutRunning] = useState(false);
@@ -148,12 +155,14 @@ export const useSigma = (options: UseSigmaOptions = {}): UseSigmaReturn => {
     blastRadiusRef.current = options.blastRadiusNodeIds || new Set();
     animatedNodesRef.current = options.animatedNodes || new Map();
     visibleEdgeTypesRef.current = options.visibleEdgeTypes || null;
+    hideUnrelatedRef.current = options.graphUnrelatedDisplay === 'hide';
     sigmaRef.current?.refresh();
   }, [
     options.highlightedNodeIds,
     options.blastRadiusNodeIds,
     options.animatedNodes,
     options.visibleEdgeTypes,
+    options.graphUnrelatedDisplay,
   ]);
 
   // Animation loop for node effects
@@ -341,6 +350,9 @@ export const useSigma = (options: UseSigmaOptions = {}): UseSigmaReturn => {
             res.size = (data.size || 8) * 1.4;
             res.zIndex = 2;
             res.highlighted = true;
+          } else if (hideUnrelatedRef.current) {
+            res.hidden = true;
+            return res;
           } else {
             res.color = dimColor(data.color, 0.15);
             res.size = (data.size || 8) * 0.4;
@@ -355,6 +367,9 @@ export const useSigma = (options: UseSigmaOptions = {}): UseSigmaReturn => {
             res.size = (data.size || 8) * 1.6;
             res.zIndex = 2;
             res.highlighted = true;
+          } else if (hideUnrelatedRef.current) {
+            res.hidden = true;
+            return res;
           } else {
             res.color = dimColor(data.color, 0.2);
             res.size = (data.size || 8) * 0.5;
@@ -379,6 +394,9 @@ export const useSigma = (options: UseSigmaOptions = {}): UseSigmaReturn => {
               res.color = data.color;
               res.size = (data.size || 8) * 1.3;
               res.zIndex = 1;
+            } else if (hideUnrelatedRef.current) {
+              res.hidden = true;
+              return res;
             } else {
               res.color = dimColor(data.color, 0.25);
               res.size = (data.size || 8) * 0.6;
@@ -397,6 +415,18 @@ export const useSigma = (options: UseSigmaOptions = {}): UseSigmaReturn => {
         const visibleTypes = visibleEdgeTypesRef.current;
         if (visibleTypes && data.relationType) {
           if (!visibleTypes.includes(data.relationType as EdgeType)) {
+            res.hidden = true;
+            return res;
+          }
+        }
+
+        const graphForHidden = graphRef.current;
+        if (graphForHidden) {
+          const [src, tgt] = graphForHidden.extremities(edge);
+          if (
+            graphForHidden.getNodeAttribute(src, 'hidden') ||
+            graphForHidden.getNodeAttribute(tgt, 'hidden')
+          ) {
             res.hidden = true;
             return res;
           }
@@ -429,10 +459,18 @@ export const useSigma = (options: UseSigmaOptions = {}): UseSigmaReturn => {
               res.size = Math.max(2, (data.size || 1) * 3);
               res.zIndex = 2;
             } else if (oneHighlighted) {
+              if (hideUnrelatedRef.current) {
+                res.hidden = true;
+                return res;
+              }
               res.color = dimColor('#06b6d4', 0.4);
               res.size = 1;
               res.zIndex = 1;
             } else {
+              if (hideUnrelatedRef.current) {
+                res.hidden = true;
+                return res;
+              }
               res.color = dimColor(data.color, 0.08);
               res.size = 0.2;
               res.zIndex = 0;
@@ -451,6 +489,9 @@ export const useSigma = (options: UseSigmaOptions = {}): UseSigmaReturn => {
               res.color = brightenColor(data.color, 1.5);
               res.size = Math.max(3, (data.size || 1) * 4);
               res.zIndex = 2;
+            } else if (hideUnrelatedRef.current) {
+              res.hidden = true;
+              return res;
             } else {
               res.color = dimColor(data.color, 0.1);
               res.size = 0.3;

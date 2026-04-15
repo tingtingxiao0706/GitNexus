@@ -37,7 +37,7 @@ import {
 import { ERROR_RESET_DELAY_MS } from '../config/ui-constants';
 import { normalizePath } from '../lib/path-resolution';
 import { FILE_REF_REGEX, NODE_REF_REGEX } from '../lib/grounding-patterns';
-import { GraphStateProvider, useGraphState } from './app-state/graph';
+import { GraphStateProvider, useGraphState, type GraphUnrelatedDisplayMode } from './app-state/graph';
 
 export type ViewMode = 'onboarding' | 'loading' | 'exploring';
 export type RightPanelTab = 'code' | 'chat';
@@ -109,6 +109,10 @@ interface AppState {
   // Depth filter (N hops from selection)
   depthFilter: number | null;
   setDepthFilter: (depth: number | null) => void;
+
+  /** Fade vs hide nodes/edges outside focus (selection, query highlight, blast). */
+  graphUnrelatedDisplay: GraphUnrelatedDisplayMode;
+  setGraphUnrelatedDisplay: (mode: GraphUnrelatedDisplayMode) => void;
 
   // Query state
   highlightedNodeIds: Set<string>;
@@ -219,6 +223,8 @@ const AppStateProviderInner = ({ children }: { children: ReactNode }) => {
     setDepthFilter,
     highlightedNodeIds,
     setHighlightedNodeIds,
+    graphUnrelatedDisplay,
+    setGraphUnrelatedDisplay,
   } = useGraphState();
 
   // Right Panel
@@ -1202,6 +1208,8 @@ const AppStateProviderInner = ({ children }: { children: ReactNode }) => {
     toggleEdgeVisibility,
     depthFilter,
     setDepthFilter,
+    graphUnrelatedDisplay,
+    setGraphUnrelatedDisplay,
     highlightedNodeIds,
     setHighlightedNodeIds,
     aiCitationHighlightedNodeIds,

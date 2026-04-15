@@ -3,6 +3,9 @@ import type { GraphNode, NodeLabel } from 'gitnexus-shared';
 import type { KnowledgeGraph } from '../../core/graph/types';
 import { DEFAULT_VISIBLE_LABELS, DEFAULT_VISIBLE_EDGES, type EdgeType } from '../../lib/constants';
 
+/** How to show nodes/edges outside the current focus (selection, search, query highlight, blast). */
+export type GraphUnrelatedDisplayMode = 'fade' | 'hide';
+
 interface GraphStateContextValue {
   graph: KnowledgeGraph | null;
   setGraph: (graph: KnowledgeGraph | null) => void;
@@ -16,6 +19,8 @@ interface GraphStateContextValue {
   setDepthFilter: (depth: number | null) => void;
   highlightedNodeIds: Set<string>;
   setHighlightedNodeIds: (ids: Set<string>) => void;
+  graphUnrelatedDisplay: GraphUnrelatedDisplayMode;
+  setGraphUnrelatedDisplay: (mode: GraphUnrelatedDisplayMode) => void;
 }
 
 const GraphStateContext = createContext<GraphStateContextValue | null>(null);
@@ -27,6 +32,8 @@ export const GraphStateProvider = ({ children }: { children: ReactNode }) => {
   const [visibleEdgeTypes, setVisibleEdgeTypes] = useState<EdgeType[]>(DEFAULT_VISIBLE_EDGES);
   const [depthFilter, setDepthFilter] = useState<number | null>(null);
   const [highlightedNodeIds, setHighlightedNodeIds] = useState<Set<string>>(new Set());
+  const [graphUnrelatedDisplay, setGraphUnrelatedDisplay] =
+    useState<GraphUnrelatedDisplayMode>('fade');
 
   const toggleLabelVisibility = useCallback((label: NodeLabel) => {
     setVisibleLabels((prev) =>
@@ -54,8 +61,18 @@ export const GraphStateProvider = ({ children }: { children: ReactNode }) => {
       setDepthFilter,
       highlightedNodeIds,
       setHighlightedNodeIds,
+      graphUnrelatedDisplay,
+      setGraphUnrelatedDisplay,
     }),
-    [graph, selectedNode, visibleLabels, visibleEdgeTypes, depthFilter, highlightedNodeIds],
+    [
+      graph,
+      selectedNode,
+      visibleLabels,
+      visibleEdgeTypes,
+      depthFilter,
+      highlightedNodeIds,
+      graphUnrelatedDisplay,
+    ],
   );
 
   return <GraphStateContext.Provider value={value}>{children}</GraphStateContext.Provider>;

@@ -32,6 +32,7 @@ import { mountMCPEndpoints } from './mcp-http.js';
 import { fork } from 'child_process';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { JobManager } from './analyze-job.js';
+import { shouldEndJobProgressStream } from './job-progress-sse.js';
 import { extractRepoName, getCloneDir, cloneOrPull } from './git-clone.js';
 
 const _require = createRequire(import.meta.url);
@@ -225,8 +226,8 @@ const mountSSEProgress = (app: express.Express, routePath: string, jm: JobManage
     const unsubscribe = jm.onProgress(job.id, (progress) => {
       try {
         eventId++;
-        if (progress.phase === 'complete' || progress.phase === 'failed') {
-          const eventJob = jm.getJob(req.params.jobId);
+        const eventJob = jm.getJob(req.params.jobId);
+        if (shouldEndJobProgressStream(eventJob, progress)) {
           res.write(
             `id: ${eventId}\nevent: ${progress.phase}\ndata: ${JSON.stringify({
               repoName: eventJob?.repoName,

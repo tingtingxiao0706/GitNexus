@@ -222,6 +222,8 @@ export const FileTreePanel = ({ onFocusNode }: FileTreePanelProps) => {
     openCodePanel,
     depthFilter,
     setDepthFilter,
+    graphUnrelatedDisplay,
+    setGraphUnrelatedDisplay,
   } = useAppState();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -407,6 +409,43 @@ export const FileTreePanel = ({ onFocusNode }: FileTreePanelProps) => {
 
       {activeTab === 'filters' && (
         <div className="scrollbar-thin flex-1 overflow-y-auto p-3">
+          <div className="mb-5 rounded-lg border border-border-subtle bg-elevated/50 p-3">
+            <h3 className="mb-1 text-xs font-medium tracking-wide text-text-secondary uppercase">
+              Unrelated nodes
+            </h3>
+            <p className="mb-3 text-[11px] leading-snug text-text-muted">
+              选中节点、搜索聚焦、查询或过程高亮时，图中<strong>以外</strong>的节点与边的显示方式。
+            </p>
+            <fieldset className="space-y-2.5">
+              <label className="flex cursor-pointer items-start gap-2.5 text-xs text-text-primary">
+                <input
+                  type="radio"
+                  name="graph-unrelated-display"
+                  checked={graphUnrelatedDisplay === 'fade'}
+                  onChange={() => setGraphUnrelatedDisplay('fade')}
+                  className="mt-0.5 accent-accent"
+                />
+                <span>
+                  <span className="font-medium">淡化</span>
+                  <span className="mt-0.5 block text-[10px] text-text-muted">默认：保留背景上下文，仅降低对比度</span>
+                </span>
+              </label>
+              <label className="flex cursor-pointer items-start gap-2.5 text-xs text-text-primary">
+                <input
+                  type="radio"
+                  name="graph-unrelated-display"
+                  checked={graphUnrelatedDisplay === 'hide'}
+                  onChange={() => setGraphUnrelatedDisplay('hide')}
+                  className="mt-0.5 accent-accent"
+                />
+                <span>
+                  <span className="font-medium">隐藏</span>
+                  <span className="mt-0.5 block text-[10px] text-text-muted">从画布上移除不相关的节点与连线</span>
+                </span>
+              </label>
+            </fieldset>
+          </div>
+
           <div className="mb-3">
             <h3 className="mb-2 text-xs font-medium tracking-wide text-text-secondary uppercase">
               Node Types
