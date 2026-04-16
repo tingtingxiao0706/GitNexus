@@ -69,6 +69,8 @@ const getNodeMass = (nodeType: NodeLabel, nodeCount: number): number => {
     case 'Function':
     case 'Method':
       return 2 * baseMassMultiplier; // Light
+    case 'RemoteSymbol':
+      return 4 * baseMassMultiplier;
     default:
       return 1; // Default mass
   }
@@ -295,6 +297,7 @@ export const knowledgeGraphToGraphology = (
     // TYPE RELATIONSHIPS - Warm colors (OOP)
     EXTENDS: { color: '#c2410c', sizeMultiplier: 1.0 }, // Orange - extension
     IMPLEMENTS: { color: '#be185d', sizeMultiplier: 0.9 }, // Pink - interface implementation
+    CROSS_GROUP: { color: '#db2777', sizeMultiplier: 1.1 },
   };
 
   knowledgeGraph.relationships.forEach((rel) => {

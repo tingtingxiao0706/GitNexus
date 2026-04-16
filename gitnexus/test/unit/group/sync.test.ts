@@ -24,6 +24,107 @@ describe('syncGroup', () => {
     matching: { bm25_threshold: 0.7, embedding_threshold: 0.65, max_candidates_per_step: 3 },
   });
 
+  it('merges manifest links when exact does not cover the same triple', async () => {
+    const config: GroupConfig = {
+      ...makeConfig({ 'app/backend': 'backend-repo', 'app/frontend': 'frontend-repo' }),
+      links: [
+        {
+          from: 'app/frontend',
+          to: 'app/backend',
+          type: 'http',
+          contract: 'GET::/api/admin',
+          role: 'consumer',
+        },
+      ],
+    };
+
+    const mockContracts: StoredContract[] = [
+      {
+        contractId: 'http::GET::/api/users',
+        type: 'http',
+        role: 'provider',
+        symbolUid: 'uid-1',
+        symbolRef: { filePath: 'src/ctrl.ts', name: 'UserController.list' },
+        symbolName: 'UserController.list',
+        confidence: 0.8,
+        meta: { method: 'GET', path: '/api/users' },
+        repo: 'app/backend',
+      },
+      {
+        contractId: 'http::GET::/api/users',
+        type: 'http',
+        role: 'consumer',
+        symbolUid: 'uid-2',
+        symbolRef: { filePath: 'src/api.ts', name: 'fetchUsers' },
+        symbolName: 'fetchUsers',
+        confidence: 0.7,
+        meta: { method: 'GET', path: '/api/users' },
+        repo: 'app/frontend',
+      },
+    ];
+
+    const result = await syncGroup(config, {
+      extractorOverride: async () => mockContracts,
+      skipWrite: true,
+    });
+
+    expect(result.crossLinks.some((l) => l.matchType === 'exact')).toBe(true);
+    const manifest = result.crossLinks.filter((l) => l.matchType === 'manifest');
+    expect(manifest).toHaveLength(1);
+    expect(manifest[0].contractId).toBe('http::GET::/api/admin');
+    expect(manifest[0].from.repo).toBe('app/frontend');
+    expect(manifest[0].to.repo).toBe('app/backend');
+  });
+
+  it('skips manifest merge when exactOnly is true', async () => {
+    const config: GroupConfig = {
+      ...makeConfig({ 'app/backend': 'backend-repo', 'app/frontend': 'frontend-repo' }),
+      links: [
+        {
+          from: 'app/frontend',
+          to: 'app/backend',
+          type: 'http',
+          contract: 'GET::/api/admin',
+          role: 'consumer',
+        },
+      ],
+    };
+
+    const mockContracts: StoredContract[] = [
+      {
+        contractId: 'http::GET::/api/users',
+        type: 'http',
+        role: 'provider',
+        symbolUid: 'uid-1',
+        symbolRef: { filePath: 'src/ctrl.ts', name: 'UserController.list' },
+        symbolName: 'UserController.list',
+        confidence: 0.8,
+        meta: {},
+        repo: 'app/backend',
+      },
+      {
+        contractId: 'http::GET::/api/users',
+        type: 'http',
+        role: 'consumer',
+        symbolUid: 'uid-2',
+        symbolRef: { filePath: 'src/api.ts', name: 'fetchUsers' },
+        symbolName: 'fetchUsers',
+        confidence: 0.7,
+        meta: {},
+        repo: 'app/frontend',
+      },
+    ];
+
+    const result = await syncGroup(config, {
+      extractorOverride: async () => mockContracts,
+      skipWrite: true,
+      exactOnly: true,
+    });
+
+    expect(result.crossLinks.every((l) => l.matchType === 'exact')).toBe(true);
+    expect(result.crossLinks).toHaveLength(1);
+  });
+
   it('returns SyncResult with contracts and cross-links', async () => {
     const config = makeConfig({ 'app/backend': 'backend-repo', 'app/frontend': 'frontend-repo' });
 

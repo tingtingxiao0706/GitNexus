@@ -44,7 +44,9 @@ export type NodeLabel =
   | 'Template'
   | 'Section'
   | 'Route'
-  | 'Tool';
+  | 'Tool'
+  /** Synthetic node: symbol in another indexed repo (group cross-link endpoint). */
+  | 'RemoteSymbol';
 
 export type NodeProperties = {
   name: string;
@@ -115,7 +117,9 @@ export type RelationshipType =
   | 'HANDLES_TOOL'
   | 'ENTRY_POINT_OF'
   | 'WRAPS'
-  | 'QUERIES';
+  | 'QUERIES'
+  /** Cross-repository contract edge (group registry); not stored in LadybugDB. */
+  | 'CROSS_GROUP';
 
 export interface GraphNode {
   id: string;

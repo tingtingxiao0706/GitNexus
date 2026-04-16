@@ -56,6 +56,7 @@ export {
   Send,
   Server,
   Settings,
+  Share2,
   SkipForward,
   Snail,
   Sparkles,

@@ -38,6 +38,7 @@ export const NODE_COLORS: Record<NodeLabel, string> = {
   Template: '#a78bfa', // Violet light - like Type
   Route: '#f43f5e', // Rose - like Process
   Tool: '#a855f7', // Purple - like Project
+  RemoteSymbol: '#f472b6', // Pink — other repo (group cross-link)
 };
 
 // Node sizes by type - clear visual hierarchy with dramatic size differences
@@ -79,6 +80,7 @@ export const NODE_SIZES: Record<NodeLabel, number> = {
   Template: 3, // Like Type
   Route: 5, // Like Enum
   Tool: 5, // Like Enum
+  RemoteSymbol: 5,
 };
 
 // Community color palette for cluster-based coloring
@@ -114,6 +116,8 @@ export const DEFAULT_VISIBLE_LABELS: NodeLabel[] = [
   'Interface',
   'Enum',
   'Type',
+  'Route',
+  'RemoteSymbol',
 ];
 
 // All filterable labels (in display order)
@@ -129,10 +133,19 @@ export const FILTERABLE_LABELS: NodeLabel[] = [
   'Variable',
   'Decorator',
   'Import',
+  'Route',
+  'RemoteSymbol',
 ];
 
 // Edge/Relation types
-export type EdgeType = 'CONTAINS' | 'DEFINES' | 'IMPORTS' | 'CALLS' | 'EXTENDS' | 'IMPLEMENTS';
+export type EdgeType =
+  | 'CONTAINS'
+  | 'DEFINES'
+  | 'IMPORTS'
+  | 'CALLS'
+  | 'EXTENDS'
+  | 'IMPLEMENTS'
+  | 'CROSS_GROUP';
 
 export const ALL_EDGE_TYPES: EdgeType[] = [
   'CONTAINS',
@@ -141,6 +154,7 @@ export const ALL_EDGE_TYPES: EdgeType[] = [
   'CALLS',
   'EXTENDS',
   'IMPLEMENTS',
+  'CROSS_GROUP',
 ];
 
 // Default visible edges (CALLS hidden by default to reduce clutter)
@@ -151,6 +165,7 @@ export const DEFAULT_VISIBLE_EDGES: EdgeType[] = [
   'EXTENDS',
   'IMPLEMENTS',
   'CALLS',
+  'CROSS_GROUP',
 ];
 
 // Edge display info for UI
@@ -161,4 +176,5 @@ export const EDGE_INFO: Record<EdgeType, { color: string; label: string }> = {
   CALLS: { color: '#7c3aed', label: 'Calls' },
   EXTENDS: { color: '#c2410c', label: 'Extends' },
   IMPLEMENTS: { color: '#be185d', label: 'Implements' },
+  CROSS_GROUP: { color: '#db2777', label: 'Cross-repo (group)' },
 };

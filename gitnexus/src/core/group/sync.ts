@@ -8,6 +8,7 @@ import { HttpRouteExtractor } from './extractors/http-route-extractor.js';
 import { GrpcExtractor } from './extractors/grpc-extractor.js';
 import { TopicExtractor } from './extractors/topic-extractor.js';
 import { runExactMatch } from './matching.js';
+import { manifestLinksToCrossLinks, mergeManifestWithExact } from './manifest-links.js';
 import { detectServiceBoundaries, assignService } from './service-boundary-detector.js';
 import type { CypherExecutor } from './contract-extractor.js';
 import { writeContractRegistry } from './storage.js';
@@ -159,7 +160,11 @@ export async function syncGroup(config: GroupConfig, opts?: SyncOptions): Promis
   }
 
   const { matched, unmatched } = runExactMatch(autoContracts);
-  const crossLinks: CrossLink[] = matched;
+  let crossLinks: CrossLink[] = matched;
+  if (!opts?.exactOnly && config.links.length > 0) {
+    const manifestCross = manifestLinksToCrossLinks(config.links, autoContracts);
+    crossLinks = mergeManifestWithExact(matched, manifestCross);
+  }
   const allContracts: StoredContract[] = autoContracts;
 
   const registry: ContractRegistry = {

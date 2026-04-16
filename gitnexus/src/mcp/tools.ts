@@ -392,7 +392,7 @@ WHEN TO USE: Discover groups before group_sync. Optional "name" returns a single
   },
   {
     name: 'group_sync',
-    description: `Rebuild the Contract Registry (contracts.json) for a group: extract HTTP contracts, apply manifest links, exact-match cross-links.
+    description: `Rebuild the Contract Registry (contracts.json) for a group: extract contracts per member repo, exact-match consumer→provider cross-links, then merge group.yaml manifest links (matchType manifest; same consumer/repo/contract as an exact link keeps the exact row only). Use exactOnly to skip manifest merge.
 
 WHEN TO USE: After changing group.yaml or re-indexing member repos.`,
     inputSchema: {
@@ -410,7 +410,7 @@ WHEN TO USE: After changing group.yaml or re-indexing member repos.`,
   },
   {
     name: 'group_contracts',
-    description: `Inspect contracts and cross-links from the group's contracts.json.
+    description: `Inspect contracts and cross-links from the group's contracts.json (crossLinks include matchType exact and manifest).
 
 WHEN TO USE: Debug cross-repo links after group_sync.`,
     inputSchema: {

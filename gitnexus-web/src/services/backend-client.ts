@@ -7,6 +7,8 @@
  */
 
 import type { GraphNode, GraphRelationship } from 'gitnexus-shared';
+import type { RepoCrossEdgeDto } from '../lib/merge-group-cross-edges.js';
+import { mergeGroupCrossEdges } from '../lib/merge-group-cross-edges.js';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -386,6 +388,74 @@ export const fetchRepos = async (): Promise<BackendRepo[]> => {
   return response.json() as Promise<BackendRepo[]>;
 };
 
+// ── Repository groups (`gitnexus group sync`) ─────────────────────────────
+
+export interface GroupListResponse {
+  groups: string[];
+}
+
+export interface GroupRepoSnapshot {
+  indexedAt: string;
+  lastCommit: string;
+}
+
+export interface GroupCrossLinkEndpoint {
+  repo: string;
+  service?: string;
+  symbolUid: string;
+  symbolRef: { filePath: string; name: string };
+}
+
+export interface GroupCrossLink {
+  from: GroupCrossLinkEndpoint;
+  to: GroupCrossLinkEndpoint;
+  type: string;
+  contractId: string;
+  matchType: string;
+  confidence: number;
+}
+
+/** Subset of contracts.json returned by GET /api/group/:name/registry */
+export interface GroupContractRegistry {
+  version: number;
+  generatedAt: string;
+  repoSnapshots: Record<string, GroupRepoSnapshot>;
+  missingRepos: string[];
+  crossLinks: GroupCrossLink[];
+  contracts: unknown[];
+}
+
+/** Names of groups that have a group.yaml under ~/.gitnexus/groups */
+export const fetchGroups = async (): Promise<string[]> => {
+  const response = await fetchWithTimeout(`${_backendUrl}/api/groups`);
+  await assertOk(response);
+  const body = (await response.json()) as GroupListResponse;
+  return Array.isArray(body.groups) ? body.groups : [];
+};
+
+/** Full contract registry for one group (read-only). */
+export const fetchGroupRegistry = async (name: string): Promise<GroupContractRegistry> => {
+  const response = await fetchWithTimeout(
+    `${_backendUrl}/api/group/${encodeURIComponent(name)}/registry`,
+  );
+  await assertOk(response);
+  return response.json() as Promise<GroupContractRegistry>;
+};
+
+export interface GroupCrossEdgesResponse {
+  repo: string;
+  edges: RepoCrossEdgeDto[];
+}
+
+/** Symbol-level cross-repo edges for merging into the repo graph (requires group sync). */
+export const fetchGroupCrossEdges = async (repo: string): Promise<GroupCrossEdgesResponse> => {
+  const response = await fetchWithTimeout(
+    `${_backendUrl}/api/group-cross-edges?${repoParam(repo)}`,
+  );
+  await assertOk(response);
+  return response.json() as Promise<GroupCrossEdgesResponse>;
+};
+
 /** Fetch repo metadata. */
 export const fetchRepoInfo = async (repo?: string): Promise<BackendRepo> => {
   const url = `${_backendUrl}/api/repo${repo ? `?${repoParam(repo)}` : ''}`;
@@ -689,5 +759,18 @@ export async function connectToServer(
     onProgress: (downloaded, total) => onProgress?.('downloading', downloaded, total),
   });
 
-  return { nodes, relationships, repoInfo };
+  let mergedNodes = nodes;
+  let mergedRels = relationships;
+  try {
+    const { edges } = await fetchGroupCrossEdges(repoInfo.name);
+    if (edges.length > 0) {
+      const merged = mergeGroupCrossEdges(nodes, relationships, edges);
+      mergedNodes = merged.nodes;
+      mergedRels = merged.relationships;
+    }
+  } catch {
+    // No groups / no contracts.json / older server — keep base graph only
+  }
+
+  return { nodes: mergedNodes, relationships: mergedRels, repoInfo };
 }

@@ -10,12 +10,14 @@ import {
   Sparkles,
   MousePointerClick,
   Loader2,
+  Share2,
 } from '@/lib/lucide-icons';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useAppState } from '../hooks/useAppState';
 import { type GraphNode, getSyntaxLanguageFromFilename } from 'gitnexus-shared';
 import { NODE_COLORS } from '../lib/constants';
+import { type CrossGroupDetailItem } from '../lib/merge-group-cross-edges.js';
 import { readFile, type ReadFileResult } from '../services/backend-client';
 
 const getSyntaxLanguage = (filePath: string | undefined): string => {
@@ -194,6 +196,22 @@ export const CodeReferencesPanel = ({ onFocusNode }: CodeReferencesPanelProps) =
   const selectedFilePath = selectedNode?.properties?.filePath;
   const selectedIsFile = selectedNode?.label === 'File' && !!selectedFilePath;
   const showSelectedViewer = !!selectedNode && !!selectedFilePath;
+
+  const crossGroupDetails = useMemo((): CrossGroupDetailItem[] | null => {
+    if (selectedNode?.label !== 'RemoteSymbol') return null;
+    const raw = selectedNode.properties?.crossGroupDetailJson;
+    if (typeof raw !== 'string' || !raw.trim()) return null;
+    try {
+      const parsed = JSON.parse(raw) as unknown;
+      if (!Array.isArray(parsed) || parsed.length === 0) return null;
+      return parsed as CrossGroupDetailItem[];
+    } catch {
+      return null;
+    }
+  }, [selectedNode]);
+
+  const showCrossGroupServiceViewer =
+    selectedNode?.label === 'RemoteSymbol' && crossGroupDetails !== null;
   const showCitations = aiReferences.length > 0;
 
   // Fetch file content from the server when a node with a filePath is selected.
@@ -299,7 +317,7 @@ export const CodeReferencesPanel = ({ onFocusNode }: CodeReferencesPanelProps) =
           <PanelLeft className="h-5 w-5" />
         </button>
         <div className="my-1 h-px w-6 bg-border-subtle" />
-        {showSelectedViewer && (
+        {(showSelectedViewer || showCrossGroupServiceViewer) && (
           <div className="rotate-90 text-[9px] font-medium tracking-wide whitespace-nowrap text-amber-400">
             SELECTED
           </div>
@@ -354,6 +372,70 @@ export const CodeReferencesPanel = ({ onFocusNode }: CodeReferencesPanelProps) =
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col">
+        {/* Cross-repo service aggregate: drill-down list (no per-call graph nodes) */}
+        {showCrossGroupServiceViewer && (
+          <div className={`${showCitations ? 'h-[42%]' : 'flex-1'} flex min-h-0 flex-col`}>
+            <div className="flex items-center gap-2 border-b border-fuchsia-500/25 bg-gradient-to-r from-fuchsia-500/10 to-pink-500/5 px-3 py-2">
+              <div className="flex items-center gap-1.5 rounded-md border border-fuchsia-500/30 bg-fuchsia-500/15 px-2 py-0.5">
+                <Share2 className="h-3 w-3 text-fuchsia-300" />
+                <span className="text-[10px] font-semibold tracking-wide text-fuchsia-200 uppercase">
+                  Cross-service
+                </span>
+              </div>
+              <span className="flex-1 truncate font-mono text-xs text-text-primary">
+                {selectedNode?.properties?.name}
+              </span>
+              <button
+                onClick={() => setSelectedNode(null)}
+                className="rounded p-1 text-text-muted transition-colors hover:bg-fuchsia-500/15 hover:text-fuchsia-200"
+                title="Clear selection"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="scrollbar-thin min-h-0 flex-1 overflow-auto px-3 py-2">
+              <p className="mb-2 text-[11px] leading-snug text-text-muted">
+                下图谱中每个远程服务仅一个节点；此处列出该服务依赖当前仓库的具体契约与本地锚点，点击可跳到图中对应位置。
+              </p>
+              <ul className="space-y-2">
+                {crossGroupDetails!.map((d, i) => (
+                  <li
+                    key={`${d.contractId}-${d.localAnchorId}-${i}`}
+                    className="rounded border border-border-subtle bg-elevated/40 px-2.5 py-2"
+                  >
+                    <div className="mb-1 font-mono text-[10px] leading-snug text-fuchsia-200/90">
+                      {d.contractId}
+                    </div>
+                    <div className="text-[11px] text-text-secondary">
+                      <span className="text-text-muted">对方符号：</span>
+                      {d.remoteLabel || d.remoteSymbolUid || '—'}
+                    </div>
+                    <div className="mt-0.5 truncate font-mono text-[10px] text-text-muted" title={d.localFilePath}>
+                      本地锚点：{d.localAnchorId}
+                    </div>
+                    {(d.localFilePath || d.localSymbolName) && (
+                      <div className="truncate text-[10px] text-text-muted">
+                        {[d.localFilePath, d.localSymbolName].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const node = nodeById.get(d.localAnchorId);
+                        if (node) setSelectedNode(node);
+                        onFocusNode(d.localAnchorId);
+                      }}
+                      className="mt-2 w-full rounded border border-fuchsia-500/35 bg-fuchsia-500/10 px-2 py-1 text-[10px] font-medium text-fuchsia-200 transition-colors hover:bg-fuchsia-500/20"
+                    >
+                      在图中定位本地锚点
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        )}
+
         {/* Top: Selected file viewer (when a node is selected) */}
         {showSelectedViewer && (
           <div className={`${showCitations ? 'h-[42%]' : 'flex-1'} flex min-h-0 flex-col`}>
@@ -433,8 +515,8 @@ export const CodeReferencesPanel = ({ onFocusNode }: CodeReferencesPanelProps) =
           </div>
         )}
 
-        {/* Divider between Selected viewer and AI refs (more visible) */}
-        {showSelectedViewer && showCitations && (
+        {/* Divider between Selected / cross-service viewer and AI refs (more visible) */}
+        {(showSelectedViewer || showCrossGroupServiceViewer) && showCitations && (
           <div className="h-1.5 bg-gradient-to-r from-transparent via-border-subtle to-transparent" />
         )}
 

@@ -9,6 +9,7 @@ import {
   Filter,
   PanelLeftClose,
   PanelLeft,
+  Share2,
   Box,
   Braces,
   Variable,
@@ -19,6 +20,7 @@ import {
   Type,
 } from '@/lib/lucide-icons';
 import { useAppState } from '../hooks/useAppState';
+import { GroupCrossServicePanel } from './GroupCrossServicePanel';
 import { FILTERABLE_LABELS, NODE_COLORS, ALL_EDGE_TYPES, EDGE_INFO } from '../lib/constants';
 import type { GraphNode, NodeLabel } from 'gitnexus-shared';
 
@@ -229,7 +231,7 @@ export const FileTreePanel = ({ onFocusNode }: FileTreePanelProps) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'files' | 'filters'>('files');
+  const [activeTab, setActiveTab] = useState<'files' | 'filters' | 'group'>('files');
 
   // Build file tree from graph
   const fileTree = useMemo(() => {
@@ -330,6 +332,16 @@ export const FileTreePanel = ({ onFocusNode }: FileTreePanelProps) => {
         >
           <Filter className="h-5 w-5" />
         </button>
+        <button
+          onClick={() => {
+            setIsCollapsed(false);
+            setActiveTab('group');
+          }}
+          className={`rounded p-2 transition-colors ${activeTab === 'group' ? 'bg-accent/10 text-accent' : 'text-text-secondary hover:bg-hover hover:text-text-primary'}`}
+          title="Cross-service groups"
+        >
+          <Share2 className="h-5 w-5" />
+        </button>
       </div>
     );
   }
@@ -338,7 +350,7 @@ export const FileTreePanel = ({ onFocusNode }: FileTreePanelProps) => {
     <div className="flex h-full w-64 animate-slide-in flex-col border-r border-border-subtle bg-surface">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border-subtle px-3 py-2">
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           <button
             onClick={() => setActiveTab('files')}
             className={`rounded px-2 py-1 text-xs transition-colors ${
@@ -358,6 +370,17 @@ export const FileTreePanel = ({ onFocusNode }: FileTreePanelProps) => {
             }`}
           >
             Filters
+          </button>
+          <button
+            onClick={() => setActiveTab('group')}
+            className={`rounded px-2 py-1 text-xs transition-colors ${
+              activeTab === 'group'
+                ? 'bg-accent/20 text-accent'
+                : 'text-text-secondary hover:bg-hover hover:text-text-primary'
+            }`}
+            title="Contract registry / cross-repo links"
+          >
+            Group
           </button>
         </div>
         <button
@@ -406,6 +429,8 @@ export const FileTreePanel = ({ onFocusNode }: FileTreePanelProps) => {
           </div>
         </>
       )}
+
+      {activeTab === 'group' && <GroupCrossServicePanel />}
 
       {activeTab === 'filters' && (
         <div className="scrollbar-thin flex-1 overflow-y-auto p-3">
@@ -594,7 +619,7 @@ export const FileTreePanel = ({ onFocusNode }: FileTreePanelProps) => {
       )}
 
       {/* Stats footer */}
-      {graph && (
+      {graph && activeTab !== 'group' && (
         <div className="border-t border-border-subtle bg-elevated/50 px-3 py-2">
           <div className="flex items-center justify-between text-[10px] text-text-muted">
             <span>{graph.nodes.length} nodes</span>

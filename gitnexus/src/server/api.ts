@@ -34,6 +34,14 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { JobManager } from './analyze-job.js';
 import { shouldEndJobProgressStream } from './job-progress-sse.js';
 import { extractRepoName, getCloneDir, cloneOrPull } from './git-clone.js';
+import {
+  getDefaultGitnexusDir,
+  getGroupDir,
+  listGroups,
+  readContractRegistry,
+  validateGroupName,
+} from '../core/group/storage.js';
+import { collectCrossEdgesForIndexedRepo } from './group-cross-edges.js';
 
 const _require = createRequire(import.meta.url);
 const pkg = _require('../../package.json');
@@ -373,6 +381,58 @@ export const createServer = async (port: number, host: string = '127.0.0.1') => 
       );
     } catch (err: any) {
       res.status(500).json({ error: err.message || 'Failed to list repos' });
+    }
+  });
+
+  // Repository groups (read-only): contracts.json produced by `gitnexus group sync`
+  app.get('/api/groups', async (_req, res) => {
+    try {
+      const groups = await listGroups();
+      res.json({ groups });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Failed to list groups' });
+    }
+  });
+
+  app.get('/api/group/:name/registry', async (req, res) => {
+    try {
+      const name = String(req.params.name ?? '').trim();
+      if (!name) {
+        res.status(400).json({ error: 'Missing group name' });
+        return;
+      }
+      try {
+        validateGroupName(name);
+      } catch (e: any) {
+        res.status(400).json({ error: e?.message || 'Invalid group name' });
+        return;
+      }
+      const groupDir = getGroupDir(getDefaultGitnexusDir(), name);
+      const registry = await readContractRegistry(groupDir);
+      if (!registry) {
+        res.status(404).json({
+          error: `No contracts.json for group "${name}". Run: gitnexus group sync ${name}`,
+        });
+        return;
+      }
+      res.json(registry);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Failed to read group registry' });
+    }
+  });
+
+  /** Symbol-level cross-repo edges for the open repo (merged into Web graph). */
+  app.get('/api/group-cross-edges', async (req, res) => {
+    try {
+      const repo = typeof req.query.repo === 'string' ? req.query.repo.trim() : '';
+      if (!repo) {
+        res.status(400).json({ error: 'Missing repo query parameter' });
+        return;
+      }
+      const edges = await collectCrossEdgesForIndexedRepo(repo);
+      res.json({ repo, edges });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message || 'Failed to collect group cross-edges' });
     }
   });
 

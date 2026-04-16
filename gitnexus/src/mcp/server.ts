@@ -301,21 +301,27 @@ export async function startMCPServer(backend: LocalBackend): Promise<void> {
 
   // Graceful shutdown helper
   let shuttingDown = false;
-  const shutdown = async (exitCode = 0) => {
+  const shutdown = async (exitCode: number = 0) => {
     if (shuttingDown) return;
     shuttingDown = true;
+    const code = Number.isFinite(exitCode) ? exitCode : 0;
     try {
       await backend.disconnect();
     } catch {}
     try {
       await server.close();
     } catch {}
-    process.exit(exitCode);
+    process.exit(code);
   };
 
-  // Handle graceful shutdown
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  // Handle graceful shutdown. Node passes the signal name as the first arg to these
+  // listeners; do not forward it to process.exit (must be a number).
+  process.on('SIGINT', () => {
+    void shutdown(0);
+  });
+  process.on('SIGTERM', () => {
+    void shutdown(0);
+  });
 
   // Log crashes to stderr so they aren't silently lost.
   // uncaughtException is fatal — shut down.
